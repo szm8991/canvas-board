@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link rel="stylesheet" href="./draw.css" />
+  </head>
+  <body>
+    <nav>
+      <ul>
+        <li data-type="pencil">画笔</li>
+        <li data-type="rect">矩形</li>
+        <li data-type="arc">圆形</li>
+        <li data-type="eraser">橡皮擦</li>
+        <li data-type="line">画笔加粗</li>
+        <li data-type="color">画笔变色</li>
+        <!-- <button>图片下载</button> -->
+        <a download="画板" href="javascript:;">图片下载</a>
+      </ul>
+    </nav>
+    <canvas id="canvas"></canvas>
+    <div class="container"></div>
+    <script>
+      /* 像素操作和生成图片
+        ctx.imageSmoothingEnabled=true——图片是否抗锯齿
+        canvas可以生成base64格式的图片url
+        canvas.toDataURL('image/png')——默认设定。创建一个PNG图片。
+        canvas.toDataURL('image/jpeg', quality)——创建一个JPG图片。你可以有选择地提供从0到1的品质量，1表示最好品质，0基本不被辨析但有比较小的文件大小。
+      */
+      const canvas = document.querySelector('#canvas');
+      const cvsCtx = canvas.getContext('2d');
+      const ul = document.querySelector('ul');
+      // const btn = document.querySelector('ul>button');
+      const a = document.querySelector('ul>a');
+      const div = document.querySelector('.container');
+      let draw = {
+        type: '',
+        isDraw: false,
+        beginX: 0,
+        beginY: 0,
+        imageData: null,
+        lineWidth: 1,
+        color: 'black',
+        pencilFn: function (e) {
+          // console.log('pencil');
+          let x = e.pageX - canvas.offsetLeft;
+          let y = e.pageY - canvas.offsetTop;
+          cvsCtx.lineTo(x, y);
+          cvsCtx.strokeStyle = this.color;
+          cvsCtx.lineWidth = this.lineWidth;
+          cvsCtx.lineCap = 'round';
+          cvsCtx.lineJoin = 'round';
+          cvsCtx.stroke();
+        },
+        rectFn: function (e) {
+          // console.log('rect');
+          cvsCtx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+          if (this.imageData != null) {
+            cvsCtx.putImageData(this.imageData, 0, 0, 0, 0, canvas.offsetWidth, canvas.offsetHeight);
+          }
+          cvsCtx.beginPath();
+          let x = e.pageX - canvas.offsetLeft;
+          let y = e.pageY - canvas.offsetTop;
+          cvsCtx.strokeStyle = this.color;
+          cvsCtx.lineWidth = this.lineWidth;
+          cvsCtx.rect(this.beginX, this.beginY, x - this.beginX, y - this.beginX);
+          cvsCtx.stroke();
+          cvsCtx.closePath();
+        },
+        arcFn: function (e) {
+          // console.log('arc');
+          cvsCtx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+          if (this.imageData != null) {
+            cvsCtx.putImageData(this.imageData, 0, 0, 0, 0, canvas.offsetWidth, canvas.offsetHeight);
+          }
+          cvsCtx.beginPath();
+          let x = e.pageX - canvas.offsetLeft;
+          let y = e.pageY - canvas.offsetTop;
+          cvsCtx.strokeStyle = this.color;
+          cvsCtx.lineWidth = this.lineWidth;
+          let r = Math.round(Math.pow(Math.pow(x - this.beginX, 2) + Math.pow(y - this.beginY, 2), 0.5));
+          cvsCtx.arc(this.beginX, this.beginY, r / 2, 0, 2 * Math.PI, false);
+          cvsCtx.stroke();
+          cvsCtx.closePath();
+        },
+        eraserFn: function (e) {
+          // console.log('eraser');
+          cvsCtx.beginPath();
+          let x = e.pageX - canvas.offsetLeft;
+          let y = e.pageY - canvas.offsetTop;
+          cvsCtx.save();
+          cvsCtx.fillStyle = '#fff';
+          cvsCtx.globalCompositeOperation = 'destination-out';
+          cvsCtx.arc(x, y, 20, 0, 2 * Math.PI, false);
+          cvsCtx.fill();
+          cvsCtx.closePath();
+          cvsCtx.restore();
+        },
+        downloadFn: function (e) {
+          console.log('download');
+        },
+      };
+      document.onselectstart = function () {
+        return false;
+      };
+      a.addEventListener('click', e => {
+        console.log('click');
+        let url = canvas.toDataURL('image/png');
+        a.href = url;
+      });
+      ul.addEventListener('click', e => {
+        if (e.target.tagName === 'LI') {
+          if (e.target.dataset.type != 'line' && e.target.dataset.type != 'color') {
+            document.querySelectorAll('nav>ul>li').forEach(item => {
+              if (item.dataset.type != 'line' && item.dataset.type != 'color') item.classList.remove('active');
+            });
+            e.target.classList.add('active');
+          } else {
+            document.querySelectorAll('nav>ul>li').forEach(item => {
+              if (item.dataset.type != 'line' && item.dataset.type != 'color') item.classList.remove('active');
+            });
+            if (e.target.dataset.type === 'line') {
+              if (e.target.classList.contains('active')) {
+                e.target.classList.remove('active');
+                draw.lineWidth = 1;
+              } else {
+                e.target.classList.add('active');
+                draw.lineWidth = 5;
+              }
+            } else if (e.target.dataset.type === 'color') {
+              if (e.target.classList.contains('active')) {
+                e.target.classList.remove('active');
+                draw.color = 'black';
+              } else {
+                e.target.classList.add('active');
+                draw.color = 'deepskyblue';
+              }
+            }
+          }
+          draw.type = e.target.dataset.type;
+        }
+      });
+      canvas.addEventListener('mousedown', e => {
+        draw.isDraw = true;
+        draw.beginX = e.pageX - canvas.offsetLeft;
+        draw.beginY = e.pageY - canvas.offsetTop;
+        cvsCtx.beginPath();
+        // console.log(draw.isDraw);
+      });
+      canvas.addEventListener('mouseup', e => {
+        draw.isDraw = false;
+        draw.imageData = cvsCtx.getImageData(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+        cvsCtx.closePath();
+        // console.log(draw.imageData);
+      });
+      canvas.addEventListener('mousemove', e => {
+        if (draw.isDraw) {
+          switch (draw.type) {
+            case 'pencil':
+              console.log('pencil');
+              draw.pencilFn(e);
+              break;
+            case 'rect':
+              draw.rectFn(e);
+              break;
+            case 'arc':
+              draw.arcFn(e);
+              break;
+            case 'eraser':
+              draw.eraserFn(e);
+              break;
+            default:
+              break;
+          }
+        }
+      });
+      //设置canvas的宽度和高度
+      canvas.setAttribute('width', canvas.offsetWidth);
+      canvas.setAttribute('height', canvas.offsetHeight);
+    </script>
+  </body>
+</html>
